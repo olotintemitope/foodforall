@@ -11,6 +11,7 @@ class UserController extends Controller
     /**
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
+     * @throws \Exception
      */
     public function save(Request $request)
     {
@@ -26,12 +27,29 @@ class UserController extends Controller
             'home_address' => 'required',
         ]);
 
-        $user = User::create($request->all());
+        $data = $request->all();
+        $userPhone = User::where('phone', $data['phone'])->first();
+
+        if ($userPhone) {
+            $validator->errors()->add('phone', 'Phone number already exists');
+            $response['data'] = [];
+            $response['msg'] = 'Error occurred';
+            $response['code'] = 400;
+            $response['errors'] = $validator->messages();
+            return response()->json($response);
+        }
+
+        $data['email'] = 'foodforall@nohunger'.bin2hex(random_bytes(10)).'.com';
+        $data['password'] = 'xpass';
+
+        $response['code'] = 201;
+        $errors = $validator->messages();
+
+        $user = User::create($data);
         $token = $user->createToken('food-for-all')->accessToken;
         $response['msg'] = 'Registration successful';
-        $response['code'] = count($validator->errors()) > 0 ? 400 : 201;
         $response['data'] = ['token' => $token];
-        $response['errors'] = $validator->errors();
+        $response['errors'] = $errors;
 
         return response()->json($response);
     }
